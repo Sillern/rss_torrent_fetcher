@@ -7,12 +7,22 @@
 
 def sqlite2cookie(filename):
     from cStringIO import StringIO
+    from tempfile import NamedTemporaryFile
+    import os
     try:
       from pysqlite2 import dbapi2 as sqlite
     except ImportError:
       import sqlite3 as sqlite
 
-    con = sqlite.connect(filename)
+    temp = NamedTemporaryFile(mode="w+b", delete=False)
+    try:
+        db_file = open(filename, "r+b")
+        temp.write(db_file.read())
+        db_file.close()
+    finally:
+        temp.close()
+
+    con = sqlite.connect(temp.name)
     con.text_factory = str
     cur = con.cursor()
     cur.execute("select host, path, isSecure, expiry, name, value from moz_cookies")
@@ -29,6 +39,11 @@ def sqlite2cookie(filename):
         s.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (
             item[0], ftstr[item[0].startswith('.')], item[1],
             ftstr[item[2]], item[3], item[4], item[5]))
+
+    try:
+        os.remove(temp.name)
+    except:
+        pass
 
     s.seek(0)
 
