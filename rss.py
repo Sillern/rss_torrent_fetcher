@@ -46,6 +46,9 @@ class Site:
         parsed_data = feedparser.parse(self.data)
         self.matched_entries = []
 
+        for entry in parsed_data["entries"]:
+            print entry["title"], entry["link"]
+
         for key, rules in ruleset.iteritems():
             for rule in rules:
                 pattern = re.compile(rule, re.IGNORECASE)
@@ -53,12 +56,24 @@ class Site:
                     if pattern.match(entry[key]):
                         self.matched_entries.append(entry)
 
+    def dry_run(self, directory):
+        for entry in self.matched_entries:
+            link = entry["link"]
+            filename = urlparse(link).path.split("/")[-1]
+            filepath = path.join(directory, filename)
+            print "[dryrun] downloading", filename
+            print "[dryrun] saving", filepath
+
     def download(self, directory):
         opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(self.cookiejar))
 
         for entry in self.matched_entries:
             link = entry["link"]
             filename = urlparse(link).path.split("/")[-1]
+            filepath = path.join(directory, filename)
+
+            if os.access(filepath, os.F_OK):
+                continue
 
             print "downloading", filename
 
@@ -66,7 +81,6 @@ class Site:
             data = r.read()
             r.close()
 
-            filepath = path.join(directory, filename)
 
             print "saving", filepath
 
