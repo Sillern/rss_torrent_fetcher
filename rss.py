@@ -30,11 +30,38 @@ import re
 import feedparser
 from urlparse import urlparse
 from os import path
+import time
 
 class Site:
-    def __init__(self, name):
+
+    def __init__(self, name, url, ruleset, directory, schedule=None):
         self.name = name
         self.cookiejar = firefox_cookies.get_cookie_jar()
+        self.url = url
+        self.directory = directory
+        self.ruleset = ruleset
+        self.schedule = schedule
+
+    def run(self):
+        while True:
+            try:
+                timestamp = time.time()
+
+                self.fetch(self.url)
+                self.parse(self.ruleset)
+                self.dry_run(self.directory)
+
+                if self.schedule == None:
+                    break;
+
+                print "sleeping for %d minutes" % (self.schedule)
+
+                while time.time() < (timestamp + self.schedule * 60):
+                    time.sleep(5)
+
+            except KeyboardInterrupt: 
+                self.schedule = None
+                break;
 
     def fetch(self, url):
         opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(self.cookiejar))

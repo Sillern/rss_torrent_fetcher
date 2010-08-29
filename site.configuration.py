@@ -1,11 +1,5 @@
 from rss import Site
 
-site = Site(name="A TV-site") 
-
-user = 1
-pass = "secretkey"
-site.fetch(url="http://www.a_tv_site.com/rss.php?uid=%d&passkey=%s" % (user, pass))
-
 ruleset = {
     "title": [
             r"^(royal[ \.]remedies).*(720).*",
@@ -16,7 +10,6 @@ ruleset = {
         ],
 }
 
-site.parse(ruleset)
+site = Site(name="A TV site", url="http://www.atvsite.com/rss/id/1", ruleset=ruleset, directory="/home/rtorrent/watch/tv/", schedule=10)
 
-site.download(directory="/home/rtorrent/watch/tv/")
-
+site.run()
