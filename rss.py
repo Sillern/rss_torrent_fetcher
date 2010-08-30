@@ -29,7 +29,7 @@ from dependencies import firefox_cookies
 import re
 import feedparser
 from urlparse import urlparse
-from os import path
+import os
 import time
 
 class Site:
@@ -49,7 +49,7 @@ class Site:
 
                 self.fetch(self.url)
                 self.parse(self.ruleset)
-                self.dry_run(self.directory)
+                self.download(self.directory)
 
                 if self.schedule == None:
                     break;
@@ -73,9 +73,6 @@ class Site:
         parsed_data = feedparser.parse(self.data)
         self.matched_entries = []
 
-        for entry in parsed_data["entries"]:
-            print entry["title"], entry["link"]
-
         for key, rules in ruleset.iteritems():
             for rule in rules:
                 pattern = re.compile(rule, re.IGNORECASE)
@@ -97,7 +94,7 @@ class Site:
         for entry in self.matched_entries:
             link = entry["link"]
             filename = urlparse(link).path.split("/")[-1]
-            filepath = path.join(directory, filename)
+            filepath = os.path.join(directory, filename)
 
             if os.access(filepath, os.F_OK):
                 continue
