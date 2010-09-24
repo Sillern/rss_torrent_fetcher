@@ -1,1 +1,4 @@
 Take a look at site.configuration.py for some simple examples.
+
+dependencies:
+    easy_install HunnyB

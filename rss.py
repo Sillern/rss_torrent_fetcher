@@ -25,6 +25,7 @@
 # or implied, of Sebastian Jegerås.
 
 import urllib, urllib2, cookielib
+import hunnyb
 from dependencies import firefox_cookies
 import re
 import feedparser
@@ -116,8 +117,16 @@ class Site:
                 except:
                     pass
 
-            print "saving", filepath
+            print "verifying downloaded data"
+            try:
+                b = hunnyb.decode(data)
+                filesize = int(b["info"]["length"])
+                print "Filesize: %d MB, Downloaded from: %s, Created by: %s" %( (filesize / (1024 * 1024)), b["info"]["source"], b["created by"])
+            except:
+                print "invalid data"
+                continue
 
+            print "saving", filepath
             downloaded_file = open(filepath, "w+b")
             downloaded_file.write(data)
             downloaded_file.close()
