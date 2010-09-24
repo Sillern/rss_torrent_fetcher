@@ -47,7 +47,9 @@ class Site:
             try:
                 timestamp = time.time()
 
-                self.fetch(self.url)
+                if not self.fetch(self.url):
+                    continue
+
                 self.parse(self.ruleset)
                 self.download(self.directory)
 
@@ -64,11 +66,15 @@ class Site:
                 break;
 
     def fetch(self, url):
-        opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(self.cookiejar))
-        r = opener.open(url)
-        self.data = r.read()
-        r.close()
-    
+        try:
+            opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(self.cookiejar))
+            r = opener.open(url)
+            self.data = r.read()
+            r.close()
+        except:
+            return False
+
+        return True
     def parse(self, ruleset):
         parsed_data = feedparser.parse(self.data)
         self.matched_entries = []
@@ -101,10 +107,14 @@ class Site:
 
             print "downloading", filename
 
-            r = opener.open(link)
-            data = r.read()
-            r.close()
-
+            data = None
+            while data == None:
+                try:
+                    r = opener.open(link)
+                    data = r.read()
+                    r.close()
+                except:
+                    pass
 
             print "saving", filepath
 
