@@ -26,7 +26,7 @@
 
 import urllib, urllib2, cookielib
 import hunnyb
-from dependencies import firefox_cookies
+from dependencies import cookies
 import re
 import feedparser
 from urlparse import urlparse
@@ -37,18 +37,24 @@ class Site:
 
     def __init__(self, name, url, ruleset, directory, schedule=None):
         self.name = name
-        self.cookiejar = firefox_cookies.get_cookie_jar()
+        self.cookiejar = cookies.get_cookie_jar()
         self.url = url
         self.directory = directory
         self.ruleset = ruleset
         self.schedule = schedule
 
     def run(self):
+        error_counter = 0
         while True:
             try:
                 timestamp = time.time()
 
                 if not self.fetch(self.url):
+                    print "Failure fetching data from %s" % (self.url)
+                    error_counter += 1
+                    if error_counter > 3:
+                        break;
+
                     continue
 
                 self.parse(self.ruleset)
