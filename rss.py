@@ -50,12 +50,19 @@ class Site:
                 timestamp = time.time()
 
                 if not self.fetch(self.url):
-                    print "Failure fetching data from %s" % (self.url)
                     error_counter += 1
-                    if error_counter > 3:
+                    print "Failure fetching data from %s, failed for the %d time" % ( self.url, error_counter )
+                    if error_counter > 10:
                         break;
 
+                    print "sleeping for %d minute" % ( 1 )
+
+                    while time.time() < (timestamp + 1 * 60):
+                        time.sleep(5)
+
                     continue
+
+                error_counter = 0
 
                 self.parse(self.ruleset)
                 self.download(self.directory)
@@ -126,10 +133,27 @@ class Site:
             print "verifying downloaded data"
             try:
                 b = hunnyb.decode(data)
-                filesize = int(b["info"]["length"])
-                print "Filesize: %d MB, Downloaded from: %s, Created by: %s" %( (filesize / (1024 * 1024)), b["info"]["source"], b["created by"])
+
+                if "info" in b:
+                    info = b[ "info" ]
+                    extradata = {}
+                    if "length" in info:
+                        filesize = int( info["length"]) / ( 1024 * 1024 ) 
+                        extradata[ "Filesize" ] = "%d MB" % filesize
+
+                    if "name" in info:
+                        extradata[ "Name" ] = info[ "name" ]
+
+                    if "created by" in b:
+                        extradata[ "Created by" ] = b[ "created by" ]
+
+                    for caption, value in extradata.iteritems():
+                        print "\t%s: %s" % ( caption, value )
             except:
-                print "invalid data"
+                print "invalid data", len( data )
+                f = open( "ERROR_%s" % filename, "wb" )
+                f.write( data )
+                f.close()
                 continue
 
             print "saving", filepath
