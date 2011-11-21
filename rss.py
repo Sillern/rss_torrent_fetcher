@@ -43,41 +43,10 @@ class Site:
         self.ruleset = ruleset
         self.schedule = schedule
 
-    def run(self):
-        error_counter = 0
-        while True:
-            try:
-                timestamp = time.time()
+        if self.fetch(self.url):
+            self.parse(self.ruleset)
+            self.download(self.directory)
 
-                if not self.fetch(self.url):
-                    error_counter += 1
-                    print "Failure fetching data from %s, failed for the %d time" % ( self.url, error_counter )
-                    if error_counter > 10:
-                        break;
-
-                    print "sleeping for %d minute" % ( 1 )
-
-                    while time.time() < (timestamp + 1 * 60):
-                        time.sleep(5)
-
-                    continue
-
-                error_counter = 0
-
-                self.parse(self.ruleset)
-                self.download(self.directory)
-
-                if self.schedule == None:
-                    break;
-
-                print "sleeping for %d minutes" % (self.schedule)
-
-                while time.time() < (timestamp + self.schedule * 60):
-                    time.sleep(5)
-
-            except KeyboardInterrupt: 
-                self.schedule = None
-                break;
 
     def fetch(self, url):
         try:
@@ -89,6 +58,7 @@ class Site:
             return False
 
         return True
+
     def parse(self, ruleset):
         parsed_data = feedparser.parse(self.data)
         self.matched_entries = []
