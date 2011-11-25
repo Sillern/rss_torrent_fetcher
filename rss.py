@@ -32,6 +32,7 @@ import feedparser
 from urlparse import urlparse
 import os
 import time
+from datetime import datetime
 
 class Site:
 
@@ -46,6 +47,8 @@ class Site:
         if self.fetch(self.url):
             self.parse(self.ruleset)
             self.download(self.directory)
+        else:
+            print "Unable to fetch", self.url
 
 
     def fetch(self, url):
@@ -78,6 +81,12 @@ class Site:
             print "[dryrun] downloading", filename
             print "[dryrun] saving", filepath
 
+    def timestamp(self):
+        return datetime.now().isoformat()
+
+    def log( self, message ):
+        print "[%s] %s" % (self.timestamp(), message)
+
     def download(self, directory):
         opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(self.cookiejar))
 
@@ -89,7 +98,7 @@ class Site:
             if os.access(filepath, os.F_OK):
                 continue
 
-            print "downloading", filename
+            self.log( "downloading %s" % ( filename ) )
 
             data = None
             while data == None:
@@ -100,7 +109,7 @@ class Site:
                 except:
                     pass
 
-            print "verifying downloaded data"
+            self.log( "verifying downloaded data" )
             try:
                 b = hunnyb.decode(data)
 
@@ -118,15 +127,15 @@ class Site:
                         extradata[ "Created by" ] = b[ "created by" ]
 
                     for caption, value in extradata.iteritems():
-                        print "\t%s: %s" % ( caption, value )
+                        self.log( "\t%s: %s" % ( caption, value ) )
             except:
-                print "invalid data", len( data )
+                self.log( "invalid data %d" % len( data ) )
                 f = open( "ERROR_%s" % filename, "wb" )
                 f.write( data )
                 f.close()
                 continue
 
-            print "saving", filepath
+            self.log( "saving %s" % filepath )
             downloaded_file = open(filepath, "w+b")
             downloaded_file.write(data)
             downloaded_file.close()
