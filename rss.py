@@ -33,6 +33,8 @@ from urlparse import urlparse
 import os
 import time
 from datetime import datetime
+import cPickle as pickle
+from dupecheck import duplicate
 
 class Site:
 
@@ -44,12 +46,22 @@ class Site:
     self.ruleset = ruleset
     self.schedule = schedule
 
+    try:
+      duplicate_db = open('duplicate.dat', 'rb')
+      self.db = pickle.load( duplicate_db )
+      duplicate_db.close()
+    except:
+      self.db = {}
+
     if self.fetch(self.url):
       self.parse(self.ruleset)
       self.download(self.directory)
     else:
       print "Unable to fetch", self.url
 
+    duplicate_db = open('duplicate.dat', 'wb')
+    pickle.dump( self.db, duplicate_db )
+    duplicate_db.close()
 
   def fetch(self, url):
     try:
@@ -71,8 +83,10 @@ class Site:
         pattern = re.compile(rule, re.IGNORECASE)
         for entry in parsed_data["entries"]:
           if pattern.match(entry[key]):
-            #TODO: regex out the season and episode number, prevent duplicate matches
-            self.matched_entries.append(entry)
+            if not duplicate( self.db, entry[ key ] ):
+              self.matched_entries.append(entry)
+            else:
+              print "DUPE:", entry[key]
 
   def dry_run(self, directory):
     for entry in self.matched_entries:
