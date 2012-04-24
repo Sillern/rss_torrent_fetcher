@@ -36,107 +36,108 @@ from datetime import datetime
 
 class Site:
 
-    def __init__(self, name, url, ruleset, directory, schedule=None):
-        self.name = name
-        self.cookiejar = cookies.get_cookie_jar()
-        self.url = url
-        self.directory = directory
-        self.ruleset = ruleset
-        self.schedule = schedule
+  def __init__(self, name, url, ruleset, directory, schedule=None):
+    self.name = name
+    self.cookiejar = cookies.get_cookie_jar()
+    self.url = url
+    self.directory = directory
+    self.ruleset = ruleset
+    self.schedule = schedule
 
-        if self.fetch(self.url):
-            self.parse(self.ruleset)
-            self.download(self.directory)
-        else:
-            print "Unable to fetch", self.url
+    if self.fetch(self.url):
+      self.parse(self.ruleset)
+      self.download(self.directory)
+    else:
+      print "Unable to fetch", self.url
 
 
-    def fetch(self, url):
+  def fetch(self, url):
+    try:
+      opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(self.cookiejar))
+      r = opener.open(url)
+      self.data = r.read()
+      r.close()
+    except:
+      return False
+
+    return True
+
+  def parse(self, ruleset):
+    parsed_data = feedparser.parse(self.data)
+    self.matched_entries = []
+
+    for key, rules in ruleset.iteritems():
+      for rule in rules:
+        pattern = re.compile(rule, re.IGNORECASE)
+        for entry in parsed_data["entries"]:
+          if pattern.match(entry[key]):
+            #TODO: regex out the season and episode number, prevent duplicate matches
+            self.matched_entries.append(entry)
+
+  def dry_run(self, directory):
+    for entry in self.matched_entries:
+      link = entry["link"]
+      filename = urlparse(link).path.split("/")[-1]
+      filepath = path.join(directory, filename)
+      print "[dryrun] downloading", filename
+      print "[dryrun] saving", filepath
+
+  def timestamp(self):
+    return datetime.now().isoformat()
+
+  def log( self, message ):
+    print "[%s] %s" % (self.timestamp(), message)
+
+  def download(self, directory):
+    opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(self.cookiejar))
+
+    for entry in self.matched_entries:
+      link = entry["link"]
+      filename = urlparse(link).path.split("/")[-1]
+      filepath = os.path.join(directory, filename)
+
+      if os.access(filepath, os.F_OK):
+        continue
+
+      self.log( "downloading %s" % ( filename ) )
+
+      data = None
+      while data == None:
         try:
-            opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(self.cookiejar))
-            r = opener.open(url)
-            self.data = r.read()
-            r.close()
+          r = opener.open(link)
+          data = r.read()
+          r.close()
         except:
-            return False
+          pass
 
-        return True
+      self.log( "verifying downloaded data" )
+      try:
+        b = hunnyb.decode(data)
 
-    def parse(self, ruleset):
-        parsed_data = feedparser.parse(self.data)
-        self.matched_entries = []
+        if "info" in b:
+          info = b[ "info" ]
+          extradata = {}
+          if "length" in info:
+            filesize = int( info["length"]) / ( 1024 * 1024 ) 
+            extradata[ "Filesize" ] = "%d MB" % filesize
 
-        for key, rules in ruleset.iteritems():
-            for rule in rules:
-                pattern = re.compile(rule, re.IGNORECASE)
-                for entry in parsed_data["entries"]:
-                    if pattern.match(entry[key]):
-                        self.matched_entries.append(entry)
+          if "name" in info:
+            extradata[ "Name" ] = info[ "name" ]
 
-    def dry_run(self, directory):
-        for entry in self.matched_entries:
-            link = entry["link"]
-            filename = urlparse(link).path.split("/")[-1]
-            filepath = path.join(directory, filename)
-            print "[dryrun] downloading", filename
-            print "[dryrun] saving", filepath
+          if "created by" in b:
+            extradata[ "Created by" ] = b[ "created by" ]
 
-    def timestamp(self):
-        return datetime.now().isoformat()
+          for caption, value in extradata.iteritems():
+            self.log( "\t%s: %s" % ( caption, value ) )
+      except:
+        self.log( "invalid data %d" % len( data ) )
+        f = open( "ERROR_%s" % filename, "wb" )
+        f.write( data )
+        f.close()
+        continue
 
-    def log( self, message ):
-        print "[%s] %s" % (self.timestamp(), message)
-
-    def download(self, directory):
-        opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(self.cookiejar))
-
-        for entry in self.matched_entries:
-            link = entry["link"]
-            filename = urlparse(link).path.split("/")[-1]
-            filepath = os.path.join(directory, filename)
-
-            if os.access(filepath, os.F_OK):
-                continue
-
-            self.log( "downloading %s" % ( filename ) )
-
-            data = None
-            while data == None:
-                try:
-                    r = opener.open(link)
-                    data = r.read()
-                    r.close()
-                except:
-                    pass
-
-            self.log( "verifying downloaded data" )
-            try:
-                b = hunnyb.decode(data)
-
-                if "info" in b:
-                    info = b[ "info" ]
-                    extradata = {}
-                    if "length" in info:
-                        filesize = int( info["length"]) / ( 1024 * 1024 ) 
-                        extradata[ "Filesize" ] = "%d MB" % filesize
-
-                    if "name" in info:
-                        extradata[ "Name" ] = info[ "name" ]
-
-                    if "created by" in b:
-                        extradata[ "Created by" ] = b[ "created by" ]
-
-                    for caption, value in extradata.iteritems():
-                        self.log( "\t%s: %s" % ( caption, value ) )
-            except:
-                self.log( "invalid data %d" % len( data ) )
-                f = open( "ERROR_%s" % filename, "wb" )
-                f.write( data )
-                f.close()
-                continue
-
-            self.log( "saving %s" % filepath )
-            downloaded_file = open(filepath, "w+b")
-            downloaded_file.write(data)
-            downloaded_file.close()
-        
+      self.log( "saving %s" % filepath )
+      downloaded_file = open(filepath, "w+b")
+      downloaded_file.write(data)
+      downloaded_file.close()
+    
